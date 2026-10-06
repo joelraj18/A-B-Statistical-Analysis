@@ -1,5 +1,4 @@
 const numberFormatter = new Intl.NumberFormat('en-US');
-const compactFormatter = new Intl.NumberFormat('en-US', { notation: 'compact', maximumFractionDigits: 1 });
 
 /** 0.1234 → "12.34%". */
 export function formatPct(value: number | null | undefined, digits = 2): string {
@@ -26,8 +25,17 @@ export function formatNum(value: number | null | undefined): string {
   return numberFormatter.format(value);
 }
 
+/**
+ * 12_345 → "12.3K". Hand-rolled because ICU builds differ (Node prints
+ * "912.0K", Chrome "912K"), which breaks hydration of static pages.
+ */
 export function formatCompact(value: number): string {
-  return compactFormatter.format(value);
+  if (!Number.isFinite(value)) return '—';
+  const abs = Math.abs(value);
+  const [div, suffix] = abs >= 1e9 ? [1e9, 'B'] : abs >= 1e6 ? [1e6, 'M'] : abs >= 1e3 ? [1e3, 'K'] : [1, ''];
+  const scaled = abs / div;
+  const digits = scaled >= 100 || suffix === '' ? scaled.toFixed(0) : scaled.toFixed(1).replace(/\.0$/, '');
+  return `${value < 0 ? '−' : ''}${digits}${suffix}`;
 }
 
 export function formatDecimal(value: number | null | undefined, digits = 2): string {
@@ -59,4 +67,18 @@ export function formatProbability(p: number | null | undefined): string {
   if (p > 0.999) return '> 99.9%';
   if (p < 0.001) return '< 0.1%';
   return formatPct(p, 1);
+}
+
+const moneyExact = new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 2 });
+
+/** 83_412 → "$83.4K". */
+export function formatMoney(value: number | null | undefined): string {
+  if (value == null || !Number.isFinite(value)) return '—';
+  const compact = formatCompact(Math.abs(value));
+  return `${value < 0 ? '−' : ''}$${compact}`;
+}
+
+/** 68 → "$68", 0.9 → "$0.90". */
+export function formatMoneyExact(value: number): string {
+  return moneyExact.format(value);
 }

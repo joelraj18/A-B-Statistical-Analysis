@@ -157,3 +157,77 @@ def test_cors_preflight_allows_configured_origin():
     )
     assert res.status_code == 200
     assert res.headers["access-control-allow-origin"] == "http://localhost:3000"
+
+
+# ---------------------------------------------------------------------------
+# Advanced diagnostics
+# ---------------------------------------------------------------------------
+
+SIMPSON = [
+    {"name": "Mobile", "visitors_a": 20_000, "conversions_a": 400, "visitors_b": 80_000, "conversions_b": 1_840},
+    {"name": "Desktop", "visitors_a": 80_000, "conversions_a": 4_800, "visitors_b": 20_000, "conversions_b": 1_320},
+]
+
+
+def test_segment_analysis_detects_simpsons_paradox():
+    res = engine.segment_analysis(SIMPSON)
+    assert res["pooled"]["absolute_diff"] < 0
+    assert all(s["result"]["absolute_diff"] > 0 for s in res["segments"])
+    assert res["simpsons_paradox"] is True
+    assert res["mix_imbalance"]["detected"] is True
+    assert res["stratified"]["absolute_diff"] > 0
+
+
+def test_robust_analysis_flags_whale_driven_lift():
+    rng = np.random.default_rng(3)
+    a = rng.lognormal(np.log(28), 0.9, 20_000)
+    b = rng.lognormal(np.log(28), 0.9, 20_000)
+    b[:8] = 50_000
+    res = engine.robust_analysis(a, b, top_k=8)
+    assert res["raw"]["is_significant"] is True
+    assert res["winsorized"]["is_significant"] is False
+    assert res["outlier_driven"] is True
+    assert res["top_k_share"] > 0.9
+
+
+def test_trend_analysis_classifies_primacy():
+    days = [
+        {"visitors_a": 40_000, "conversions_a": 4_000, "visitors_b": 40_000, "conversions_b": round(4_000 * (1 + min(0.08, -0.12 + d * 0.02)))}
+        for d in range(21)
+    ]
+    res = engine.trend_analysis(days, learning_days=14)
+    assert res["pattern"] == "primacy"
+    assert res["post"]["absolute_diff"] > 0 and res["post"]["is_significant"]
+
+
+def test_interference_check_flags_spillover():
+    res = engine.interference_check(
+        {"visitors": 40_000, "conversions": 8_000}, {"visitors": 20_000, "conversions": 3_200}, {"visitors": 20_000, "conversions": 4_000}
+    )
+    assert res["spillover"] is True
+    assert res["naive"]["relative_uplift"] == pytest.approx(0.25)
+    assert abs(res["global"]["absolute_diff"]) < 1e-12
+    assert res["cannibalized_share"] == pytest.approx(1.0)
+
+
+def test_switchback_requires_two_blocks_per_arm():
+    with pytest.raises(ValueError):
+        engine.switchback_analysis([{"arm": "A", "value": 1}, {"arm": "B", "value": 2}, {"arm": "B", "value": 3}])
+
+
+def test_diagnostic_endpoints():
+    assert client.post("/api/v1/analyze/segments", json={"segments": SIMPSON}).json()["simpsons_paradox"] is True
+    assert client.post("/api/v1/analyze/segments", json={"segments": SIMPSON[:1]}).status_code == 422
+    body = client.post(
+        "/api/v1/analyze/interference",
+        json={"baseline": {"visitors": 100, "conversions": 20}, "control": {"visitors": 100, "conversions": 10}, "treatment": {"visitors": 100, "conversions": 30}},
+    ).json()
+    assert set(body) == {"naive", "control_shift", "global", "spillover", "cannibalized_share"}
+    bad = {"baseline": {"visitors": 10, "conversions": 11}, "control": {"visitors": 10, "conversions": 1}, "treatment": {"visitors": 10, "conversions": 1}}
+    assert client.post("/api/v1/analyze/interference", json=bad).status_code == 422
+    days = [{"visitors_a": 1000, "conversions_a": 100, "visitors_b": 1000, "conversions_b": 100 + i} for i in range(5)]
+    assert client.post("/api/v1/analyze/trend", json={"days": days, "learning_days": 5}).status_code == 422
+    assert client.post("/api/v1/analyze/trend", json={"days": days, "learning_days": 2}).status_code == 200
+    assert client.post("/api/v1/analyze/robust", json={"values_a": [1, 2, 3], "values_b": [2, 3, 50]}).status_code == 200
+    blocks = [{"arm": "A" if i % 2 else "B", "value": i} for i in range(6)]
+    assert client.post("/api/v1/analyze/switchback", json={"blocks": blocks}).status_code == 200

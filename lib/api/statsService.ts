@@ -13,7 +13,12 @@ import type {
   ContinuousAnalysisResponse,
   CupedResponse,
   HealthResponse,
+  InterferenceResponse,
+  RobustResponse,
   SampleSizeResponse,
+  SegmentResponse,
+  SwitchbackResponse,
+  TrendResponse,
 } from '@/types/api';
 import type {
   BinaryInput,
@@ -22,8 +27,18 @@ import type {
   ContinuousResult,
   CupedInput,
   CupedResult,
+  InterferenceInput,
+  InterferenceResult,
+  RobustInput,
+  RobustResult,
   SampleSizeInput,
   SampleSizeResult,
+  SegmentAnalysisInput,
+  SegmentAnalysisResult,
+  SwitchbackInput,
+  SwitchbackResult,
+  TrendInput,
+  TrendResult,
 } from '@/types/stats';
 import { useEngineStatus } from '@/lib/store/engineStatus';
 import { APIError, apiRequest, isApiConfigured } from './client';
@@ -31,11 +46,21 @@ import {
   fromBinaryResponse,
   fromContinuousResponse,
   fromCupedResponse,
+  fromInterferenceResponse,
+  fromRobustResponse,
   fromSampleSizeResponse,
+  fromSegmentResponse,
+  fromSwitchbackResponse,
+  fromTrendResponse,
   toBinaryRequest,
   toContinuousRequest,
   toCupedRequest,
+  toInterferenceRequest,
+  toRobustRequest,
   toSampleSizeRequest,
+  toSegmentRequest,
+  toSwitchbackRequest,
+  toTrendRequest,
 } from './mappers';
 
 const RECHECK_AFTER_MS = 30_000;
@@ -125,6 +150,55 @@ export const remoteEngine = {
           signal,
           timeoutMs: 15_000,
         }).then(fromCupedResponse),
+      signal,
+    ),
+
+  segments: (input: SegmentAnalysisInput, signal?: AbortSignal): Promise<SegmentAnalysisResult | null> =>
+    tryRemote(
+      () =>
+        apiRequest<SegmentResponse>('/api/v1/analyze/segments', { method: 'POST', body: toSegmentRequest(input), signal }).then(
+          fromSegmentResponse,
+        ),
+      signal,
+    ),
+
+  robust: (input: RobustInput, signal?: AbortSignal): Promise<RobustResult | null> =>
+    tryRemote(
+      () =>
+        apiRequest<RobustResponse>('/api/v1/analyze/robust', {
+          method: 'POST',
+          body: toRobustRequest(input),
+          signal,
+          timeoutMs: 15_000,
+        }).then(fromRobustResponse),
+      signal,
+    ),
+
+  trend: (input: TrendInput, signal?: AbortSignal): Promise<TrendResult | null> =>
+    tryRemote(
+      () => apiRequest<TrendResponse>('/api/v1/analyze/trend', { method: 'POST', body: toTrendRequest(input), signal }).then(fromTrendResponse),
+      signal,
+    ),
+
+  interference: (input: InterferenceInput, signal?: AbortSignal): Promise<InterferenceResult | null> =>
+    tryRemote(
+      () =>
+        apiRequest<InterferenceResponse>('/api/v1/analyze/interference', {
+          method: 'POST',
+          body: toInterferenceRequest(input),
+          signal,
+        }).then(fromInterferenceResponse),
+      signal,
+    ),
+
+  switchback: (input: SwitchbackInput, signal?: AbortSignal): Promise<SwitchbackResult | null> =>
+    tryRemote(
+      () =>
+        apiRequest<SwitchbackResponse>('/api/v1/analyze/switchback', {
+          method: 'POST',
+          body: toSwitchbackRequest(input),
+          signal,
+        }).then(fromSwitchbackResponse),
       signal,
     ),
 };

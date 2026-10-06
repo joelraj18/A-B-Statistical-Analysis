@@ -350,3 +350,48 @@ export function tPpf(p: number, df: number): number {
   }
   return upper ? -x : x;
 }
+
+// Chi-square ----------------------------------------------------------------------
+
+/** Regularized upper incomplete gamma Q(a, x) (series / Lentz continued fraction). */
+export function regularizedGammaQ(a: number, x: number): number {
+  if (x <= 0) return 1;
+  if (!Number.isFinite(x)) return 0;
+  const lnFront = -x + a * Math.log(x) - logGamma(a);
+  if (x < a + 1) {
+    // Series for P(a, x).
+    let sum = 1 / a;
+    let term = sum;
+    for (let n = 1; n < 1000; n++) {
+      term *= x / (a + n);
+      sum += term;
+      if (Math.abs(term) < Math.abs(sum) * 1e-16) break;
+    }
+    return 1 - sum * Math.exp(lnFront);
+  }
+  const TINY = 1e-300;
+  let b = x + 1 - a;
+  let c = 1 / TINY;
+  let d = 1 / b;
+  let h = d;
+  for (let i = 1; i < 1000; i++) {
+    const an = -i * (i - a);
+    b += 2;
+    d = an * d + b;
+    if (Math.abs(d) < TINY) d = TINY;
+    c = b + an / c;
+    if (Math.abs(c) < TINY) c = TINY;
+    d = 1 / d;
+    const del = d * c;
+    h *= del;
+    if (Math.abs(del - 1) < 1e-16) break;
+  }
+  return Math.exp(lnFront) * h;
+}
+
+/** Chi-square survival function P(X > x) with `df` degrees of freedom. */
+export function chi2Sf(x: number, df: number): number {
+  if (!(df > 0) || Number.isNaN(x)) return NaN;
+  if (df === 1) return x <= 0 ? 1 : 2 * normSf(Math.sqrt(x));
+  return regularizedGammaQ(df / 2, x / 2);
+}

@@ -161,3 +161,152 @@ class HealthResponse(_Model):
     status: Literal["ok"]
     version: str
     engine: dict[str, str]
+
+
+# ---------------------------------------------------------------------------
+# Advanced diagnostics
+# ---------------------------------------------------------------------------
+
+
+class _Counts(BaseModel):
+    visitors: int = Field(..., gt=0)
+    conversions: int = Field(..., ge=0)
+
+    @model_validator(mode="after")
+    def _within(self) -> "_Counts":
+        if self.conversions > self.visitors:
+            raise ValueError("conversions cannot exceed visitors")
+        return self
+
+
+class _ArmCounts(BaseModel):
+    visitors_a: int = Field(..., gt=0)
+    conversions_a: int = Field(..., ge=0)
+    visitors_b: int = Field(..., gt=0)
+    conversions_b: int = Field(..., ge=0)
+
+    @model_validator(mode="after")
+    def _within(self) -> "_ArmCounts":
+        if self.conversions_a > self.visitors_a or self.conversions_b > self.visitors_b:
+            raise ValueError("conversions cannot exceed visitors")
+        return self
+
+
+class Segment(_ArmCounts):
+    name: str = Field(..., min_length=1, max_length=80)
+
+
+class SegmentRequest(BaseModel):
+    segments: list[Segment] = Field(..., min_length=2, max_length=50)
+    confidence: float = Confidence
+
+
+class RobustRequest(BaseModel):
+    values_a: list[float] = Field(..., min_length=2)
+    values_b: list[float] = Field(..., min_length=2)
+    confidence: float = Confidence
+    winsorize_percentile: float = Field(0.99, gt=0.5, lt=1)
+    top_k: int = Field(3, ge=1, le=100)
+
+
+class TrendRequest(BaseModel):
+    days: list[_ArmCounts] = Field(..., min_length=3, max_length=366)
+    confidence: float = Confidence
+    learning_days: int = Field(7, ge=1)
+
+    @model_validator(mode="after")
+    def _window(self) -> "TrendRequest":
+        if self.learning_days >= len(self.days):
+            raise ValueError("learning_days must leave at least one day to analyse")
+        return self
+
+
+class InterferenceRequest(BaseModel):
+    baseline: _Counts
+    control: _Counts
+    treatment: _Counts
+    confidence: float = Confidence
+
+
+class Block(BaseModel):
+    arm: Literal["A", "B"]
+    value: float
+
+
+class SwitchbackRequest(BaseModel):
+    blocks: list[Block] = Field(..., min_length=4)
+    confidence: float = Confidence
+
+
+class EffectSummary(_Model):
+    absolute_diff: float
+    se: float
+    ci_absolute: tuple[float, float]
+    p_value: float
+    is_significant: bool
+
+
+class SegmentRow(_Model):
+    name: str
+    result: BinaryAnalysisResponse
+    share_a: float
+    share_b: float
+
+
+class MixImbalance(_Model):
+    chi_square: float
+    df: int
+    p_value: float
+    detected: bool
+
+
+class SegmentResponse(_Model):
+    pooled: BinaryAnalysisResponse
+    segments: list[SegmentRow]
+    stratified: EffectSummary
+    mix_imbalance: MixImbalance
+    simpsons_paradox: bool
+
+
+class RobustResponse(_Model):
+    raw: ContinuousAnalysisResponse
+    winsorized: ContinuousAnalysisResponse
+    cap: float
+    skewness: float
+    top_k_share: float | None
+    top_values: list[float]
+    outlier_driven: bool
+
+
+class TrendDay(_Model):
+    day: int
+    absolute_diff: float
+    relative_uplift: float | None
+    ci_relative: tuple[float, float] | None
+
+
+class TrendResponse(_Model):
+    days: list[TrendDay]
+    slope: float
+    slope_se: float
+    slope_p_value: float
+    pattern: Literal["primacy", "novelty", "stable"]
+    early: BinaryAnalysisResponse
+    post: BinaryAnalysisResponse
+    overall: BinaryAnalysisResponse
+
+
+class InterferenceResponse(_Model):
+    naive: BinaryAnalysisResponse
+    control_shift: BinaryAnalysisResponse
+    global_: BinaryAnalysisResponse = Field(alias="global")
+    spillover: bool
+    cannibalized_share: float | None
+
+    model_config = ConfigDict(extra="forbid", populate_by_name=True, serialize_by_alias=True)
+
+
+class SwitchbackResponse(_Model):
+    result: ContinuousAnalysisResponse
+    blocks_a: int
+    blocks_b: int

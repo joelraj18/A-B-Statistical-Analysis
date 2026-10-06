@@ -5,9 +5,30 @@
 import { describe, expect, it } from 'vitest';
 import vectors from './fixtures/scipy_vectors.json';
 import { cuped, requiredSampleSize, twoProportionZTest, welchTTest } from '@/lib/stats/abEngine';
-import { normCdf, normPpf, normSf, tCdf, tPpf } from '@/lib/stats/distributions';
-import { fromBinaryResponse, fromContinuousResponse, fromCupedResponse, fromSampleSizeResponse } from '@/lib/api/mappers';
-import type { BinaryAnalysisResponse, ContinuousAnalysisResponse, CupedResponse, SampleSizeResponse } from '@/types/api';
+import { chi2Sf, normCdf, normPpf, normSf, tCdf, tPpf } from '@/lib/stats/distributions';
+import { interferenceCheck, robustAnalysis, segmentAnalysis, switchbackAnalysis, trendAnalysis } from '@/lib/stats/diagnostics';
+import {
+  fromBinaryResponse,
+  fromContinuousResponse,
+  fromCupedResponse,
+  fromInterferenceResponse,
+  fromRobustResponse,
+  fromSampleSizeResponse,
+  fromSegmentResponse,
+  fromSwitchbackResponse,
+  fromTrendResponse,
+} from '@/lib/api/mappers';
+import type {
+  BinaryAnalysisResponse,
+  ContinuousAnalysisResponse,
+  CupedResponse,
+  InterferenceResponse,
+  RobustResponse,
+  SampleSizeResponse,
+  SegmentResponse,
+  SwitchbackResponse,
+  TrendResponse,
+} from '@/types/api';
 
 /** Relative error with an absolute floor for values near zero. */
 function close(actual: number, expected: number, rel: number, abs = 1e-300) {
@@ -103,5 +124,53 @@ describe('engine parity with backend/engine.py', () => {
       confidence: input.confidence,
     });
     deepClose(local, fromCupedResponse(output as CupedResponse), 1e-9, 1e-12);
+  });
+});
+
+describe('diagnostics parity with backend/engine.py', () => {
+  type Wire = Record<string, number>;
+  const counts = (d: Wire) => ({ visitorsA: d.visitors_a!, conversionsA: d.conversions_a!, visitorsB: d.visitors_b!, conversionsB: d.conversions_b! });
+
+  it('chi-square survival function', () => {
+    for (const [x, df, p] of vectors.chi2_sf) close(chi2Sf(x!, df!), p!, 1e-11, 1e-300);
+  });
+
+  it('segment analysis', () => {
+    const { input, output } = vectors.segments;
+    const local = segmentAnalysis({
+      segments: input.segments.map((s) => ({ name: s.name, ...counts(s as unknown as Wire) })),
+      confidence: input.confidence,
+    });
+    deepClose(local, fromSegmentResponse(output as SegmentResponse), 1e-9, 1e-12);
+  });
+
+  it('robust analysis', () => {
+    const { input, output } = vectors.robust;
+    const local = robustAnalysis({
+      valuesA: input.values_a,
+      valuesB: input.values_b,
+      confidence: input.confidence,
+      winsorizePercentile: input.winsorize_percentile,
+      topK: input.top_k,
+    });
+    deepClose(local, fromRobustResponse(output as RobustResponse), 1e-9, 1e-12);
+  });
+
+  it('trend analysis', () => {
+    const { input, output } = vectors.trend;
+    const local = trendAnalysis({ days: input.days.map((d) => counts(d as Wire)), confidence: input.confidence, learningDays: input.learning_days });
+    deepClose(local, fromTrendResponse(output as TrendResponse), 1e-9, 1e-12);
+  });
+
+  it('interference check', () => {
+    const { input, output } = vectors.interference;
+    const local = interferenceCheck(input);
+    deepClose(local, fromInterferenceResponse(output as InterferenceResponse), 1e-9, 1e-12);
+  });
+
+  it('switchback analysis', () => {
+    const { input, output } = vectors.switchback;
+    const local = switchbackAnalysis({ blocks: input.blocks as { arm: 'A' | 'B'; value: number }[], confidence: input.confidence });
+    deepClose(local, fromSwitchbackResponse(output as SwitchbackResponse), 1e-9, 1e-12);
   });
 });

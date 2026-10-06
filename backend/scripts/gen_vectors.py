@@ -52,6 +52,40 @@ def main() -> None:
         confidence=0.95,
     )
 
+    segments_case = dict(
+        segments=[
+            dict(name="Mobile", visitors_a=20_000, conversions_a=400, visitors_b=80_000, conversions_b=1_840),
+            dict(name="Desktop", visitors_a=80_000, conversions_a=4_800, visitors_b=20_000, conversions_b=1_320),
+            dict(name="Tablet", visitors_a=5_000, conversions_a=210, visitors_b=5_200, conversions_b=230),
+        ],
+        confidence=0.95,
+    )
+    robust_case = dict(
+        values_a=[12.0, 15.5, 9.2, 22.1, 18.4, 7.7, 14.3, 19.9, 11.1, 16.0, 13.2, 10.8],
+        values_b=[13.4, 17.2, 10.9, 23.8, 19.1, 9.6, 15.0, 21.7, 12.5, 18.3, 950.0, 14.1],
+        confidence=0.95,
+        winsorize_percentile=0.9,
+        top_k=2,
+    )
+    trend_case = dict(
+        days=[
+            dict(visitors_a=5_000, conversions_a=500, visitors_b=5_000, conversions_b=440 + 6 * i)
+            for i in range(12)
+        ],
+        confidence=0.95,
+        learning_days=7,
+    )
+    interference_case = dict(
+        baseline=dict(visitors=40_000, conversions=8_000),
+        control=dict(visitors=20_000, conversions=3_200),
+        treatment=dict(visitors=20_000, conversions=4_000),
+        confidence=0.95,
+    )
+    switchback_case = dict(
+        blocks=[dict(arm="A" if i % 2 == 0 else "B", value=0.6 + 0.01 * ((i * 7) % 5) + (0.02 if i % 2 else 0)) for i in range(24)],
+        confidence=0.9,
+    )
+
     data = {
         "norm_cdf": [[x, float(stats.norm.cdf(x))] for x in xs],
         "norm_sf": [[x, float(stats.norm.sf(x))] for x in xs],
@@ -62,6 +96,12 @@ def main() -> None:
         "continuous": [{"input": c, "output": engine.welch_t_test(**c)} for c in continuous_cases],
         "sample_size": [{"input": c, "output": engine.required_sample_size(**c)} for c in sample_cases],
         "cuped": {"input": cuped_case, "output": engine.cuped(**cuped_case)},
+        "chi2_sf": [[x, df, float(stats.chi2.sf(x, df))] for x, df in [(0.5, 1), (3.84, 1), (2.0, 2), (7.8, 3), (12.0, 5), (40.0, 10), (150.0, 4), (0.1, 7)]],
+        "segments": {"input": segments_case, "output": engine.segment_analysis(**segments_case)},
+        "robust": {"input": robust_case, "output": engine.robust_analysis(**robust_case)},
+        "trend": {"input": trend_case, "output": engine.trend_analysis(**trend_case)},
+        "interference": {"input": interference_case, "output": engine.interference_check(**interference_case)},
+        "switchback": {"input": switchback_case, "output": engine.switchback_analysis(**switchback_case)},
     }
     OUT.parent.mkdir(parents=True, exist_ok=True)
     OUT.write_text(json.dumps(data, indent=2) + "\n")

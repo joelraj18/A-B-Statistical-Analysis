@@ -301,3 +301,195 @@ def cuped(
             "estimator": reduction(original["se"] ** 2, adjusted["se"] ** 2),
         },
     }
+
+
+# ---------------------------------------------------------------------------
+# Advanced diagnostics
+# ---------------------------------------------------------------------------
+
+
+def _effect(diff: float, se: float, confidence: float) -> dict:
+    z = _z_critical(confidence)
+    if se > 0:
+        p_value = float(min(1.0, 2 * stats.norm.sf(abs(diff / se))))
+    else:
+        p_value = 1.0 if diff == 0 else 0.0
+    return {
+        "absolute_diff": diff,
+        "se": se,
+        "ci_absolute": [diff - z * se, diff + z * se],
+        "p_value": p_value,
+        "is_significant": bool(p_value < 1 - confidence),
+    }
+
+
+def _compare(a: dict, b: dict, confidence: float) -> dict:
+    """Z-test between two groups whose sizes are not meant to match (no SRM alarm)."""
+    return two_proportion_z_test(
+        a["visitors"],
+        a["conversions"],
+        b["visitors"],
+        b["conversions"],
+        confidence,
+        expected_share_a=a["visitors"] / (a["visitors"] + b["visitors"]),
+    )
+
+
+def segment_analysis(segments: Sequence[dict], confidence: float = 0.95) -> dict:
+    """Per-segment Z-tests, a stratified estimate and a Simpson's-paradox check."""
+    if len(segments) < 2:
+        raise ValueError("Add at least two segments.")
+    keys = ("visitors_a", "conversions_a", "visitors_b", "conversions_b")
+    totals = {k: sum(s[k] for s in segments) for k in keys}
+    pooled = two_proportion_z_test(*(totals[k] for k in keys), confidence)
+    n = totals["visitors_a"] + totals["visitors_b"]
+
+    rows = []
+    diff = 0.0
+    variance = 0.0
+    for s in segments:
+        if not str(s["name"]).strip():
+            raise ValueError("Every segment needs a name.")
+        result = two_proportion_z_test(*(s[k] for k in keys), confidence)
+        w = (s["visitors_a"] + s["visitors_b"]) / n
+        diff += w * result["absolute_diff"]
+        variance += w * w * result["se_unpooled"] ** 2
+        rows.append(
+            {
+                "name": s["name"],
+                "result": result,
+                "share_a": s["visitors_a"] / totals["visitors_a"],
+                "share_b": s["visitors_b"] / totals["visitors_b"],
+            }
+        )
+
+    table = np.array([[s["visitors_a"], s["visitors_b"]] for s in segments], dtype=float)
+    chi2, mix_p, dof, _ = stats.chi2_contingency(table, correction=False)
+
+    pooled_sign = np.sign(pooled["absolute_diff"])
+    simpsons = bool(pooled_sign != 0 and all(np.sign(r["result"]["absolute_diff"]) == -pooled_sign for r in rows))
+
+    return {
+        "pooled": pooled,
+        "segments": rows,
+        "stratified": _effect(diff, math.sqrt(variance), confidence),
+        "mix_imbalance": {"chi_square": float(chi2), "df": int(dof), "p_value": float(mix_p), "detected": bool(mix_p < 0.001)},
+        "simpsons_paradox": simpsons,
+    }
+
+
+def robust_analysis(
+    values_a: Sequence[float],
+    values_b: Sequence[float],
+    confidence: float = 0.95,
+    winsorize_percentile: float = 0.99,
+    top_k: int = 3,
+) -> dict:
+    """Skew and top-k concentration checks, then Welch's test after capping the upper tail."""
+    a = np.asarray(values_a, float)
+    b = np.asarray(values_b, float)
+    if a.size < 2 or b.size < 2:
+        raise ValueError("Each arm needs at least 2 users.")
+    if not (np.isfinite(a).all() and np.isfinite(b).all()):
+        raise ValueError("All values must be finite numbers.")
+
+    raw = _welch_from_samples(a, b, confidence)
+    pooled = np.concatenate([a, b])
+    cap = float(np.quantile(pooled, winsorize_percentile))
+    winsorized = _welch_from_samples(np.minimum(a, cap), np.minimum(b, cap), confidence)
+
+    mean_a = float(np.mean(a))
+    total_lift = float(np.sum(b)) - mean_a * b.size
+    top = np.sort(b)[::-1][:top_k]
+    top_lift = float(np.sum(top - mean_a))
+    top_share = top_lift / total_lift if total_lift > 0 else None
+
+    return {
+        "raw": raw,
+        "winsorized": winsorized,
+        "cap": cap,
+        "skewness": float(stats.skew(pooled, bias=True)),
+        "top_k_share": top_share,
+        "top_values": [float(v) for v in top],
+        "outlier_driven": bool(raw["is_significant"] and (not winsorized["is_significant"] or (top_share or 0) > 0.5)),
+    }
+
+
+def trend_analysis(days: Sequence[dict], confidence: float = 0.95, learning_days: int = 7) -> dict:
+    """Daily lift, a weighted trend in the daily difference, and pre/post learning-window tests."""
+    if len(days) < 3:
+        raise ValueError("Add at least 3 days of data.")
+    if not 1 <= learning_days < len(days):
+        raise ValueError("The learning period must leave at least one day to analyse.")
+    keys = ("visitors_a", "conversions_a", "visitors_b", "conversions_b")
+    z = _z_critical(confidence)
+
+    daily = []
+    for i, d in enumerate(days):
+        r = two_proportion_z_test(*(d[k] for k in keys), confidence)
+        uplift, ci_rel = _relative_interval(r["rate_a"], r["arms"]["a"]["se"], r["rate_b"], r["arms"]["b"]["se"], z)
+        daily.append({"day": i + 1, "absolute_diff": r["absolute_diff"], "se": r["se_unpooled"], "relative_uplift": uplift, "ci_relative": ci_rel})
+
+    usable = [d for d in daily if d["se"] > 0]
+    if len(usable) < 3:
+        raise ValueError("At least 3 days need variance to estimate a trend.")
+    x = np.array([d["day"] for d in usable], float)
+    y = np.array([d["absolute_diff"] for d in usable], float)
+    w = 1 / np.array([d["se"] for d in usable], float) ** 2
+    x_bar = np.sum(w * x) / np.sum(w)
+    y_bar = np.sum(w * y) / np.sum(w)
+    sxx = float(np.sum(w * (x - x_bar) ** 2))
+    slope = float(np.sum(w * (x - x_bar) * (y - y_bar)) / sxx)
+    slope_se = math.sqrt(1 / sxx)
+    slope_p = float(min(1.0, 2 * stats.norm.sf(abs(slope / slope_se))))
+
+    def agg(rows: Sequence[dict]) -> dict:
+        return two_proportion_z_test(*(sum(r[k] for r in rows) for k in keys), confidence)
+
+    early, post, overall = agg(days[:learning_days]), agg(days[learning_days:]), agg(days)
+    # Classify on the fitted effect at the first day: users first dislike
+    # (primacy) or over-engage with (novelty) a change, then the trend reverses.
+    start = float(y_bar + slope * (daily[0]["day"] - x_bar))
+    pattern = "stable"
+    if slope_p < 1 - confidence:
+        if start < 0 and slope > 0:
+            pattern = "primacy"
+        elif start > 0 and slope < 0:
+            pattern = "novelty"
+
+    return {
+        "days": [{k: d[k] for k in ("day", "absolute_diff", "relative_uplift", "ci_relative")} for d in daily],
+        "slope": slope,
+        "slope_se": slope_se,
+        "slope_p_value": slope_p,
+        "pattern": pattern,
+        "early": early,
+        "post": post,
+        "overall": overall,
+    }
+
+
+def interference_check(baseline: dict, control: dict, treatment: dict, confidence: float = 0.95) -> dict:
+    """SUTVA check: did control degrade versus its own baseline while the test ran?"""
+    naive = _compare(control, treatment, confidence)
+    control_shift = _compare(baseline, control, confidence)
+    global_ = _compare(baseline, treatment, confidence)
+    share = None
+    if naive["absolute_diff"] > 0:
+        share = min(1.0, max(0.0, -control_shift["absolute_diff"] / naive["absolute_diff"]))
+    return {
+        "naive": naive,
+        "control_shift": control_shift,
+        "global": global_,
+        "spillover": bool(control_shift["is_significant"] and control_shift["absolute_diff"] < 0),
+        "cannibalized_share": share,
+    }
+
+
+def switchback_analysis(blocks: Sequence[dict], confidence: float = 0.95) -> dict:
+    """Welch's test on time-block means from a switchback design."""
+    a = np.array([b["value"] for b in blocks if b["arm"] == "A"], float)
+    b = np.array([b["value"] for b in blocks if b["arm"] == "B"], float)
+    if a.size < 2 or b.size < 2:
+        raise ValueError("Each algorithm needs at least 2 time blocks.")
+    return {"result": _welch_from_samples(a, b, confidence), "blocks_a": int(a.size), "blocks_b": int(b.size)}

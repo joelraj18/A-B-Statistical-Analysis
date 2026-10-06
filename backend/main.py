@@ -27,8 +27,18 @@ from schemas import (
     CupedRequest,
     CupedResponse,
     HealthResponse,
+    InterferenceRequest,
+    InterferenceResponse,
+    RobustRequest,
+    RobustResponse,
     SampleSizeRequest,
     SampleSizeResponse,
+    SegmentRequest,
+    SegmentResponse,
+    SwitchbackRequest,
+    SwitchbackResponse,
+    TrendRequest,
+    TrendResponse,
 )
 
 VERSION = "3.0.0"
@@ -99,6 +109,36 @@ def analyze_continuous(req: ContinuousAnalysisRequest) -> dict:
 def analyze_cuped(req: CupedRequest) -> dict:
     """CUPED variance reduction followed by Welch's t-test on raw and adjusted metrics."""
     return engine.cuped(req.y_control, req.x_control, req.y_variant, req.x_variant, req.confidence)
+
+
+@v1.post("/analyze/segments", response_model=SegmentResponse, tags=["diagnostics"])
+def analyze_segments(req: SegmentRequest) -> dict:
+    """Per-segment tests, stratified estimate, mix-shift check and Simpson's-paradox flag."""
+    return engine.segment_analysis([s.model_dump() for s in req.segments], req.confidence)
+
+
+@v1.post("/analyze/robust", response_model=RobustResponse, tags=["diagnostics"])
+def analyze_robust(req: RobustRequest) -> dict:
+    """Outlier concentration and Welch's test after Winsorizing the upper tail."""
+    return engine.robust_analysis(req.values_a, req.values_b, req.confidence, req.winsorize_percentile, req.top_k)
+
+
+@v1.post("/analyze/trend", response_model=TrendResponse, tags=["diagnostics"])
+def analyze_trend(req: TrendRequest) -> dict:
+    """Daily lift trend and primacy / novelty classification."""
+    return engine.trend_analysis([d.model_dump() for d in req.days], req.confidence, req.learning_days)
+
+
+@v1.post("/analyze/interference", response_model=InterferenceResponse, tags=["diagnostics"])
+def analyze_interference(req: InterferenceRequest) -> dict:
+    """SUTVA check comparing control against its own baseline."""
+    return engine.interference_check(req.baseline.model_dump(), req.control.model_dump(), req.treatment.model_dump(), req.confidence)
+
+
+@v1.post("/analyze/switchback", response_model=SwitchbackResponse, tags=["diagnostics"])
+def analyze_switchback(req: SwitchbackRequest) -> dict:
+    """Welch's test on time-block means from a switchback experiment."""
+    return engine.switchback_analysis([b.model_dump() for b in req.blocks], req.confidence)
 
 
 app.include_router(v1)
