@@ -89,8 +89,12 @@ cd backend && pytest
 
 ## Deployment
 
-- **Frontend → GitHub Pages:** `npm run deploy` builds a static export under `/A-B-Statistical-Analysis` and publishes `out/` (with `.nojekyll`) to the `gh-pages` branch. Any static host (Vercel, Netlify) works with a plain `npm run build`.
-- **Backend → Render / Fly.io / Hugging Face Spaces:** build `backend/Dockerfile`; set `ALLOWED_ORIGINS` to the frontend origin.
+- **Frontend → GitHub Pages (automatic):** `.github/workflows/deploy.yml` tests, builds the static export under `/<repo-name>` and publishes it on every push to `master` (or via *Run workflow*).
+  - One-time setup: **Settings → Pages → Source: GitHub Actions**.
+  - Optional build-time configuration as repository *variables* (Settings → Secrets and variables → Actions → Variables): `NEXT_PUBLIC_API_URL`, `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`. Without them the site runs fully on-device with a browser-local archive.
+  - Manual alternative: `npm run deploy` publishes `out/` to a `gh-pages` branch (then set Pages to deploy from that branch instead).
+- **Other static hosts (Vercel, Netlify):** plain `npm run build`, serve `out/`.
+- **Backend → Render / Fly.io / Hugging Face Spaces:** build `backend/Dockerfile`; set `ALLOWED_ORIGINS` to the frontend origin (e.g. `https://joelraj18.github.io`).
 - **Database → Supabase:** run `supabase/migrations/0001_experiments.sql` in the SQL editor and enable email (magic link) auth.
 
 ## Upgrading from v2
