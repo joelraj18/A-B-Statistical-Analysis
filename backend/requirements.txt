@@ -1,0 +1,6 @@
+fastapi>=0.115,<1
+uvicorn[standard]>=0.30
+numpy>=2.0
+scipy>=1.14
+statsmodels>=0.14.4
+pydantic>=2.7
