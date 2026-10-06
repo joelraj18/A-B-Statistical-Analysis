@@ -107,7 +107,7 @@ export function ConfidenceIntervalPlot({ rows, formatValue, markers = [], captio
             {ticks.map((t) => (
               <span
                 key={t}
-                className={cn('tabular absolute top-1.5 -translate-x-1/2 text-[11px]', t === 0 ? 'font-semibold text-fg-secondary' : 'text-faint')}
+                className={cn('tabular absolute top-1.5 -translate-x-1/2 whitespace-nowrap text-[11px]', t === 0 ? 'font-semibold text-fg-secondary' : 'text-faint')}
                 style={{ left: pos(t) }}
               >
                 {formatValue(t)}

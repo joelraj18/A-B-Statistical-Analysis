@@ -126,3 +126,15 @@ describe('buildNarrative', () => {
     expect(buildNarrative(r).verdict).toBe('inconclusive');
   });
 });
+
+describe('formatMoney / formatCompact', () => {
+  it('is deterministic across ICU builds', async () => {
+    const { formatCompact, formatMoney } = await import('@/lib/stats/format');
+    expect(formatMoney(912_000)).toBe('$912K');
+    expect(formatMoney(83_460)).toBe('$83.5K');
+    expect(formatMoney(4_380_000)).toBe('$4.4M');
+    expect(formatMoney(-1_000)).toBe('−$1K');
+    expect(formatCompact(950)).toBe('950');
+    expect(formatCompact(72_620)).toBe('72.6K');
+  });
+});

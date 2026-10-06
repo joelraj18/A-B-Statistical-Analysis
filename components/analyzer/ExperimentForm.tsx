@@ -42,7 +42,7 @@ export function ExperimentForm() {
   return (
     <div className="space-y-5">
       <GlassCard>
-        <CardHeader title="Hypothesis" description="Declare it before you look at results — it prevents HARKing." />
+        <CardHeader title="Hypothesis" description="Declare it before you look at results to prevent HARKing" />
         <div className="space-y-4">
           <TextField label="Experiment name" value={draft.name} onChange={(name) => setDraft({ name })} placeholder="Checkout CTA contrast" maxLength={200} />
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -56,7 +56,7 @@ export function ExperimentForm() {
       </GlassCard>
 
       <GlassCard>
-        <CardHeader title="Results data" description="Enter the final counts once the planned sample is reached." />
+        <CardHeader title="Results data" description="Enter the final counts once the planned sample is reached" />
         <SegmentedControl<MetricKind> ariaLabel="Metric type" options={METRICS} value={draft.metric} onChange={(metric) => setDraft({ metric })} fullWidth className="mb-5" />
 
         {draft.metric === 'binary' ? (
@@ -83,7 +83,7 @@ export function ExperimentForm() {
               max={99}
               value={Math.round((draft.binary.expectedShareA ?? 0.5) * 1000) / 10}
               onChange={(v) => setBinary({ expectedShareA: v / 100 })}
-              hint="Used for the sample-ratio-mismatch check. 50% for an even split."
+              hint="Used for the sample ratio mismatch check, 50% for an even split"
             />
           </div>
         ) : (

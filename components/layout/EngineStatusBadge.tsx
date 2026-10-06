@@ -24,7 +24,7 @@ export function EngineStatusBadge({ source, className }: { source?: EngineSource
           .map(([k, v]) => `${k} ${v}`)
           .join(' · ')
       : status === 'offline'
-        ? 'The FastAPI service is unreachable — results use the double-precision TypeScript engine.'
+        ? 'The FastAPI service is unreachable, so results use the double-precision TypeScript engine.'
         : status === 'unconfigured'
           ? 'Set NEXT_PUBLIC_API_URL to use the SciPy service. Results use the double-precision TypeScript engine.'
           : undefined;

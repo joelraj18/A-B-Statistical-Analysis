@@ -273,14 +273,14 @@ export function achievedPower(n: number, p1: number, p2: number, alpha: number):
 
 // CUPED ---------------------------------------------------------------------------
 
-function mean(xs: readonly number[]): number {
+export function mean(xs: readonly number[]): number {
   let s = 0;
   for (const x of xs) s += x;
   return s / xs.length;
 }
 
 /** Sample variance (ddof = 1). */
-function variance(xs: readonly number[], mu = mean(xs)): number {
+export function variance(xs: readonly number[], mu = mean(xs)): number {
   let s = 0;
   for (const x of xs) s += (x - mu) ** 2;
   return s / (xs.length - 1);
@@ -294,7 +294,7 @@ function covariance(xs: readonly number[], ys: readonly number[]): number {
   return s / (xs.length - 1);
 }
 
-function welchFromSamples(a: readonly number[], b: readonly number[], confidence: number): ContinuousResult {
+export function welchFromSamples(a: readonly number[], b: readonly number[], confidence: number): ContinuousResult {
   return welchTTest({
     meanA: mean(a),
     sdA: Math.sqrt(variance(a)),
@@ -358,7 +358,7 @@ export function cuped(input: CupedInput): CupedResult {
 // Synthetic data ----------------------------------------------------------------------
 
 /** Deterministic PRNG (mulberry32) so demo datasets are reproducible. */
-function mulberry32(seed: number) {
+export function mulberry32(seed: number) {
   let a = seed >>> 0;
   return () => {
     a = (a + 0x6d2b79f5) >>> 0;
@@ -369,17 +369,20 @@ function mulberry32(seed: number) {
   };
 }
 
+/** Standard normal draws (Box–Muller) from a uniform PRNG. */
+export function gaussian(rand: () => number): number {
+  let u = 0;
+  while (u === 0) u = rand();
+  return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
+}
+
 /**
  * Generates a revenue-per-user style dataset where the in-experiment metric is
  * strongly correlated with pre-experiment spend — the setting where CUPED shines.
  */
 export function generateCupedDemo(n = 2000, lift = 0.6, seed = 42): Omit<CupedInput, 'confidence'> {
   const rand = mulberry32(seed);
-  const gauss = () => {
-    let u = 0;
-    while (u === 0) u = rand();
-    return Math.sqrt(-2 * Math.log(u)) * Math.cos(2 * Math.PI * rand());
-  };
+  const gauss = () => gaussian(rand);
   const arm = (effect: number) => {
     const x: number[] = [];
     const y: number[] = [];

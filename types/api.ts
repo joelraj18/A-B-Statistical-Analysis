@@ -115,3 +115,99 @@ export interface ApiErrorBody {
   detail?: string | { loc?: (string | number)[]; msg?: string }[];
   message?: string;
 }
+
+// Advanced diagnostics ----------------------------------------------------------
+
+interface CountsWire {
+  visitors: number;
+  conversions: number;
+}
+
+interface ArmCountsWire {
+  visitors_a: number;
+  conversions_a: number;
+  visitors_b: number;
+  conversions_b: number;
+}
+
+export interface SegmentRequest {
+  segments: (ArmCountsWire & { name: string })[];
+  confidence?: number;
+}
+
+export interface RobustRequest {
+  values_a: number[];
+  values_b: number[];
+  confidence?: number;
+  winsorize_percentile?: number;
+  top_k?: number;
+}
+
+export interface TrendRequest {
+  days: ArmCountsWire[];
+  confidence?: number;
+  learning_days?: number;
+}
+
+export interface InterferenceRequest {
+  baseline: CountsWire;
+  control: CountsWire;
+  treatment: CountsWire;
+  confidence?: number;
+}
+
+export interface SwitchbackRequest {
+  blocks: { arm: 'A' | 'B'; value: number }[];
+  confidence?: number;
+}
+
+export interface EffectSummaryWire {
+  absolute_diff: number;
+  se: number;
+  ci_absolute: Pair;
+  p_value: number;
+  is_significant: boolean;
+}
+
+export interface SegmentResponse {
+  pooled: BinaryAnalysisResponse;
+  segments: { name: string; result: BinaryAnalysisResponse; share_a: number; share_b: number }[];
+  stratified: EffectSummaryWire;
+  mix_imbalance: { chi_square: number; df: number; p_value: number; detected: boolean };
+  simpsons_paradox: boolean;
+}
+
+export interface RobustResponse {
+  raw: ContinuousAnalysisResponse;
+  winsorized: ContinuousAnalysisResponse;
+  cap: number;
+  skewness: number;
+  top_k_share: number | null;
+  top_values: number[];
+  outlier_driven: boolean;
+}
+
+export interface TrendResponse {
+  days: { day: number; absolute_diff: number; relative_uplift: number | null; ci_relative: Pair | null }[];
+  slope: number;
+  slope_se: number;
+  slope_p_value: number;
+  pattern: 'primacy' | 'novelty' | 'stable';
+  early: BinaryAnalysisResponse;
+  post: BinaryAnalysisResponse;
+  overall: BinaryAnalysisResponse;
+}
+
+export interface InterferenceResponse {
+  naive: BinaryAnalysisResponse;
+  control_shift: BinaryAnalysisResponse;
+  global: BinaryAnalysisResponse;
+  spillover: boolean;
+  cannibalized_share: number | null;
+}
+
+export interface SwitchbackResponse {
+  result: ContinuousAnalysisResponse;
+  blocks_a: number;
+  blocks_b: number;
+}

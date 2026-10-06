@@ -145,3 +145,140 @@ export interface EngineResponse<T> {
   data: T;
   source: EngineSource;
 }
+
+// ---------------------------------------------------------------------------
+// Advanced diagnostics
+// ---------------------------------------------------------------------------
+
+export interface CountPair {
+  visitors: number;
+  conversions: number;
+}
+
+/** Compact effect summary used by the diagnostics. */
+export interface EffectSummary {
+  absoluteDiff: number;
+  se: number;
+  ciAbsolute: Interval;
+  pValue: number;
+  isSignificant: boolean;
+}
+
+export interface SegmentInput {
+  name: string;
+  visitorsA: number;
+  conversionsA: number;
+  visitorsB: number;
+  conversionsB: number;
+}
+
+export interface SegmentAnalysisInput {
+  segments: SegmentInput[];
+  confidence: number;
+}
+
+export interface SegmentRow {
+  name: string;
+  result: BinaryResult;
+  /** Share of each arm's traffic that falls in this segment. */
+  shareA: number;
+  shareB: number;
+}
+
+export interface SegmentAnalysisResult {
+  pooled: BinaryResult;
+  segments: SegmentRow[];
+  /** Σ wₛ dₛ with wₛ the segment's share of all traffic. */
+  stratified: EffectSummary;
+  /** χ² test of independence between segment and arm. */
+  mixImbalance: { chiSquare: number; df: number; pValue: number; detected: boolean };
+  /** Every segment moves one way while the pooled result moves the other. */
+  simpsonsParadox: boolean;
+}
+
+export interface RobustInput {
+  valuesA: number[];
+  valuesB: number[];
+  confidence: number;
+  /** Upper percentile the values are capped at, e.g. 0.99. */
+  winsorizePercentile: number;
+  topK: number;
+}
+
+export interface RobustResult {
+  raw: ContinuousResult;
+  winsorized: ContinuousResult;
+  cap: number;
+  /** Fisher–Pearson skewness of the pooled values. */
+  skewness: number;
+  /** Share of B's total lift over A contributed by its `topK` largest values. */
+  topKShare: number | null;
+  topValues: number[];
+  outlierDriven: boolean;
+}
+
+export interface DailyCounts {
+  visitorsA: number;
+  conversionsA: number;
+  visitorsB: number;
+  conversionsB: number;
+}
+
+export interface TrendInput {
+  days: DailyCounts[];
+  confidence: number;
+  /** Days excluded as a learning period before reading the result. */
+  learningDays: number;
+}
+
+export type TrendPattern = 'primacy' | 'novelty' | 'stable';
+
+export interface TrendDay {
+  day: number;
+  absoluteDiff: number;
+  relativeUplift: number | null;
+  ciRelative: Interval | null;
+}
+
+export interface TrendResult {
+  days: TrendDay[];
+  /** Weighted least-squares slope of the daily difference per day. */
+  slope: number;
+  slopeSe: number;
+  slopePValue: number;
+  pattern: TrendPattern;
+  early: BinaryResult;
+  post: BinaryResult;
+  overall: BinaryResult;
+}
+
+export interface InterferenceInput {
+  /** Control metric before the test, or from a global holdout. */
+  baseline: CountPair;
+  control: CountPair;
+  treatment: CountPair;
+  confidence: number;
+}
+
+export interface InterferenceResult {
+  /** Treatment vs control — what a user-level dashboard shows. */
+  naive: BinaryResult;
+  /** Control during the test vs its own baseline. */
+  controlShift: BinaryResult;
+  /** Treatment vs baseline — the change the business actually sees. */
+  global: BinaryResult;
+  spillover: boolean;
+  /** Fraction of the naive lift explained by control degrading. */
+  cannibalizedShare: number | null;
+}
+
+export interface SwitchbackInput {
+  blocks: { arm: 'A' | 'B'; value: number }[];
+  confidence: number;
+}
+
+export interface SwitchbackResult {
+  result: ContinuousResult;
+  blocksA: number;
+  blocksB: number;
+}

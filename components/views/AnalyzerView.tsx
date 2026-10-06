@@ -7,6 +7,7 @@ import { ConfidenceIntervalPlot, type IntervalRow } from '@/components/charts/Co
 import { DistributionCurve } from '@/components/charts/DistributionCurve';
 import { ErrorBarChart } from '@/components/charts/ErrorBarChart';
 import { CupedPanel } from '@/components/analyzer/CupedPanel';
+import { DiagnosticsPanel } from '@/components/analyzer/DiagnosticsPanel';
 import { ExperimentForm } from '@/components/analyzer/ExperimentForm';
 import { KpiGrid } from '@/components/analyzer/KpiGrid';
 import { NarrativeSummary } from '@/components/analyzer/NarrativeSummary';
@@ -82,9 +83,9 @@ function AnalyzerWorkspace() {
   return (
     <>
       <PageHeader
-        eyebrow="Phases 2 & 3 · Hypothesis and analysis"
+        eyebrow="Phase 2 & 3 · Hypothesis and analysis"
         title="A/B Analyzer"
-        description="Exact two-proportion Z-tests for conversion metrics and Welch’s t-test for revenue, with SRM guards and a plain-English verdict."
+        description="Exact two-proportion Z-tests for conversion and Welch’s t-test for revenue, with SRM guards and a plain-English verdict"
         actions={
           <>
             <Button variant="secondary" icon={<RotateCcw />} onClick={resetDraft}>
@@ -102,7 +103,7 @@ function AnalyzerWorkspace() {
           <ExperimentForm />
         </div>
 
-        <div className="min-w-0 space-y-5">
+        <div id="results" className="min-w-0 scroll-mt-56 space-y-5">
           <AnimatePresence initial={false}>
             {active.error && (
               <Callout key="error" tone="negative" icon={<CircleAlert />} title="Check your inputs">
@@ -130,7 +131,7 @@ function AnalyzerWorkspace() {
 
               <div className="grid grid-cols-1 gap-5 xl:grid-cols-2">
                 <GlassCard>
-                  <CardHeader icon={<BrainCircuit />} title="Distribution analysis" description="Sampling distribution of each arm’s estimate." />
+                  <CardHeader icon={<BrainCircuit />} title="Distribution analysis" description="Sampling distribution of each arm’s estimate" />
                   <DistributionCurve
                     control={{ mean: result.arms.a.estimate, se: result.arms.a.se }}
                     variant={{ mean: result.arms.b.estimate, se: result.arms.b.se }}
@@ -141,7 +142,7 @@ function AnalyzerWorkspace() {
                   <CardHeader
                     icon={<BarChart3 />}
                     title="Rate comparison"
-                    description={`${isBinary ? 'Conversion rates with Wilson' : 'Means with t'} ${Math.round(result.confidence * 100)}% intervals.`}
+                    description={`${isBinary ? 'Conversion rates with Wilson' : 'Means with t'} ${Math.round(result.confidence * 100)}% intervals`}
                   />
                   <ErrorBarChart arms={result.arms} confidence={result.confidence} formatValue={fmtValue} />
                 </GlassCard>
@@ -150,7 +151,7 @@ function AnalyzerWorkspace() {
               <GlassCard>
                 <CardHeader
                   title="Treatment effect"
-                  description={`${Math.round(result.confidence * 100)}% confidence interval. If it excludes zero, the result is significant at α = ${result.alpha.toFixed(2)}.`}
+                  description={`${Math.round(result.confidence * 100)}% confidence interval, significant at α = ${result.alpha.toFixed(2)} when it excludes zero`}
                 />
                 <ConfidenceIntervalPlot
                   rows={effectRow ? [effectRow] : []}
@@ -166,6 +167,7 @@ function AnalyzerWorkspace() {
           )}
 
           {draft.metric === 'continuous' && <CupedPanel confidence={draft.confidence} />}
+          <DiagnosticsPanel confidence={draft.confidence} />
         </div>
       </div>
     </>
