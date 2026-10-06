@@ -10,12 +10,12 @@ const WORKFLOW = [
   {
     phase: 'Phase 1',
     title: 'Plan the sample',
-    body: 'Enter the baseline rate and the smallest relative lift worth shipping. Adopt the plan — the Analyzer will flag any read-out before that sample is reached.',
+    body: 'Enter the baseline rate and the smallest relative lift worth shipping. Adopt the plan and the Analyzer will flag any read-out before that sample is reached.',
   },
   {
     phase: 'Phase 2',
     title: 'State the hypothesis',
-    body: '“If we [change], then [metric] will [effect] because [rationale].” Written before data exists, it rules out HARKing — hypothesising after the results are known.',
+    body: '“If we [change], then [metric] will [effect] because [rationale].” Written before data exists, it rules out HARKing, hypothesising after the results are known.',
   },
   {
     phase: 'Phase 3',
@@ -25,7 +25,7 @@ const WORKFLOW = [
   {
     phase: 'Phase 4',
     title: 'Archive the learning',
-    body: 'Save every test — especially the losers. A searchable ledger of hypotheses and outcomes stops teams repeating failed ideas and enables meta-analysis.',
+    body: 'Save every test, especially the losers. A searchable ledger of hypotheses and outcomes stops teams repeating failed ideas and enables meta-analysis.',
   },
 ];
 
@@ -81,7 +81,7 @@ export default function GuidePage() {
       <PageHeader
         eyebrow="Methodology"
         title="How the engine decides"
-        description="Classical frequentist hypothesis testing with the guardrails from the online-experimentation literature. Every number in the app comes from one of the formulas below."
+        description="Classical frequentist testing with the guardrails from the online experimentation literature, and the formula behind every number in the app"
       />
 
       <section aria-labelledby="workflow" className="mb-12">
@@ -106,7 +106,7 @@ export default function GuidePage() {
           Mathematics
         </h2>
         <GlassCard>
-          <CardHeader icon={<FlaskConical />} title="Two-proportion Z-test" description="Conversion rates, click-through, any yes/no metric." />
+          <CardHeader icon={<FlaskConical />} title="Two-proportion Z-test" description="Conversion rates, click-through and any yes or no metric" />
           <p className="text-[14px] leading-relaxed text-fg-secondary">
             H₀: p<sub>B</sub> − p<sub>A</sub> = 0 against H₁: p<sub>B</sub> − p<sub>A</sub> ≠ 0. Under H₀ both arms share one rate, so the test statistic uses the pooled
             standard error:
@@ -123,8 +123,8 @@ export default function GuidePage() {
         </GlassCard>
 
         <GlassCard>
-          <CardHeader icon={<Sigma />} title="Welch’s t-test" description="Revenue per user, session length, any continuous metric." />
-          <p className="text-[14px] leading-relaxed text-fg-secondary">Welch’s test does not assume equal variances — revenue in a treatment arm is rarely as spread as control.</p>
+          <CardHeader icon={<Sigma />} title="Welch’s t-test" description="Revenue per user, session length and any continuous metric" />
+          <p className="text-[14px] leading-relaxed text-fg-secondary">Welch’s test does not assume equal variances, because revenue in a treatment arm is rarely spread like control.</p>
           <Formula>
             t = (x̄<sub>B</sub> − x̄<sub>A</sub>) / √(s²<sub>A</sub>/n<sub>A</sub> + s²<sub>B</sub>/n<sub>B</sub>)
             <br />ν = (s²<sub>A</sub>/n<sub>A</sub> + s²<sub>B</sub>/n<sub>B</sub>)² / [ (s²<sub>A</sub>/n<sub>A</sub>)²/(n<sub>A</sub>−1) + (s²<sub>B</sub>/n<sub>B</sub>)²/(n<sub>B</sub>−1) ]
@@ -133,7 +133,7 @@ export default function GuidePage() {
         </GlassCard>
 
         <GlassCard>
-          <CardHeader icon={<Calculator />} title="Sample size & power" description="Fixed-horizon design for a two-sided test." />
+          <CardHeader icon={<Calculator />} title="Sample size & power" description="Fixed-horizon design for a two-sided test" />
           <Formula label="p₂ = p₁(1 + MDE), p̄ = (p₁ + p₂)/2">
             n = ( z<sub>α/2</sub>·√(2p̄(1 − p̄)) + z<sub>β</sub>·√(p₁(1 − p₁) + p₂(1 − p₂)) )² / (p₂ − p₁)²
           </Formula>
@@ -144,14 +144,14 @@ export default function GuidePage() {
         </GlassCard>
 
         <GlassCard>
-          <CardHeader icon={<Sparkles />} title="CUPED variance reduction" description="Deng, Xu, Kohavi & Walker (2013)." />
+          <CardHeader icon={<Sparkles />} title="CUPED variance reduction" description="Deng, Xu, Kohavi and Walker, 2013" />
           <Formula>
             Ŷ<sub>cv</sub> = Y − θ(X − E[X]), θ = Cov(X, Y) / Var(X)
             <br />Var(Ŷ<sub>cv</sub>) = Var(Y)·(1 − ρ²)
           </Formula>
           <p className="text-[14px] leading-relaxed text-fg-secondary">
             X is the same metric measured before the experiment. Because X is unaffected by treatment, the adjusted estimate stays unbiased while variance falls by
-            ρ² — a correlation of 0.7 halves the variance, equivalent to doubling traffic. θ is estimated on pooled data.
+            ρ². A correlation of 0.7 halves the variance, equivalent to doubling traffic. θ is estimated on pooled data.
           </p>
         </GlassCard>
       </section>

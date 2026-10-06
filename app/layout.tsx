@@ -5,11 +5,11 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: {
-    default: 'Experiment Lab — A/B Engine',
+    default: 'Experiment Lab · A/B Engine',
     template: '%s · Experiment Lab',
   },
   description:
-    'Plan, analyse and archive controlled experiments with exact p-values, sample-size planning, SRM checks and CUPED variance reduction.',
+    'Plan, analyse and archive controlled experiments with exact p-values, sample size planning, SRM checks, CUPED and persona stories',
   applicationName: 'Experiment Lab',
 };
 
@@ -27,6 +27,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
+        {/* Must run before first paint to avoid a light/dark flash; next/script's
+            beforeInteractive is deferred under static export. */}
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
       </head>
       <body>

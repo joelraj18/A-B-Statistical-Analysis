@@ -96,7 +96,7 @@ function Ledger() {
       <PageHeader
         eyebrow="Phase 4 · Institutional memory"
         title="Experiment Archive"
-        description="Every concluded test, its hypothesis and its verdict — so the next team doesn’t re-run a failed idea."
+        description="Every concluded test with its hypothesis and verdict, so the next team never reruns a failed idea"
         actions={
           <>
             {isCloudEnabled && user && (
@@ -117,7 +117,7 @@ function Ledger() {
             <Archive className="size-7" />
           </span>
           <h2 className="mt-5 text-xl font-semibold tracking-tight">No experiments yet</h2>
-          <p className="mt-2 max-w-sm text-[15px] text-muted">Analyse a test and choose “Save to archive” to start building your team’s knowledge base.</p>
+          <p className="mt-2 max-w-sm text-[15px] text-muted">Analyse a test and choose Save to archive to start your team’s knowledge base</p>
           <Link href="/analyzer/" className="mt-6 inline-flex h-10 items-center gap-2 rounded-full bg-accent px-5 text-[14px] font-medium text-white">
             <FlaskConical className="size-4" /> Open Analyzer
           </Link>

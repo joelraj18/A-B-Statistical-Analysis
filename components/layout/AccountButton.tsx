@@ -70,7 +70,7 @@ export function AccountButton() {
         open={open}
         onClose={() => setOpen(false)}
         title="Sync your archive"
-        description="Sign in with a one-time link to back up experiments and access them on any device. No password needed."
+        description="Sign in with a one-time link to back up experiments and open them on any device, no password needed"
       >
         <form onSubmit={submit} className="space-y-4">
           <TextField label="Work email" value={email} onChange={setEmail} placeholder="analyst@company.com" />

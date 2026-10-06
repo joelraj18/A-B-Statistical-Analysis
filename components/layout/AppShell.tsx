@@ -1,10 +1,11 @@
 'use client';
 
 import { motion, MotionConfig } from 'framer-motion';
-import { Archive, BookOpen, FlaskConical, LayoutGrid, Target } from 'lucide-react';
+import { Archive, BookHeart, BookOpen, FlaskConical, LayoutGrid, Target } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useEffect } from 'react';
+import { StoryBanner } from '@/components/stories/StoryBanner';
 import { Toaster } from '@/components/ui/Toaster';
 import { checkEngineHealth } from '@/lib/api/statsService';
 import { cn } from '@/lib/cn';
@@ -20,9 +21,10 @@ import { ThemeToggle, useApplyTheme } from './ThemeToggle';
 
 const NAV = [
   { href: '/', label: 'Overview', icon: LayoutGrid },
-  { href: '/planner/', label: 'Planner', icon: Target, phase: 1 },
-  { href: '/analyzer/', label: 'Analyzer', icon: FlaskConical, phase: 3 },
-  { href: '/history/', label: 'Archive', icon: Archive, phase: 4 },
+  { href: '/planner/', label: 'Planner', icon: Target, phase: 'Phase 1' },
+  { href: '/analyzer/', label: 'Analyzer', icon: FlaskConical, phase: 'Phase 2 & 3' },
+  { href: '/history/', label: 'Archive', icon: Archive, phase: 'Phase 4' },
+  { href: '/stories/', label: 'Stories', icon: BookHeart },
   { href: '/guide/', label: 'Guide', icon: BookOpen },
 ] as const;
 
@@ -108,7 +110,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {active && <motion.span layoutId="nav-active" transition={spring} className="absolute inset-0 -z-10 rounded-xl bg-fill" />}
                 <Icon className={cn('size-[18px]', active && 'text-accent')} />
                 <span className="flex-1">{label}</span>
-                {'phase' in item && <span className="text-[11px] font-medium text-faint">Phase {item.phase}</span>}
+                {'phase' in item && <span className="text-[11px] font-medium text-faint">{item.phase}</span>}
                 {href === '/history/' && archiveCount > 0 && (
                   <span className="tabular rounded-full bg-fill px-1.5 text-[11px] text-muted">{archiveCount}</span>
                 )}
@@ -130,7 +132,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </header>
 
       <main id="main" className="min-h-dvh pb-28 lg:ml-[248px] lg:pb-16">
-        <div className="mx-auto w-full max-w-[1200px] px-4 pt-6 sm:px-6 lg:px-10 lg:pt-12">{children}</div>
+        <div className="mx-auto w-full max-w-[1200px] px-4 pt-6 sm:px-6 lg:px-10 lg:pt-12">
+          <StoryBanner />
+          {children}
+        </div>
       </main>
 
       {/* Mobile tab bar */}
@@ -138,7 +143,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         aria-label="Primary"
         className="no-print fixed inset-x-0 bottom-0 z-30 border-t border-hairline bg-surface pb-[env(safe-area-inset-bottom)] backdrop-blur-xl backdrop-saturate-150 lg:hidden"
       >
-        <div className="mx-auto grid max-w-lg grid-cols-5">
+        <div className="mx-auto grid max-w-lg grid-cols-6">
           {NAV.map(({ href, label, icon: Icon }) => {
             const active = isActive(pathname, href);
             return (

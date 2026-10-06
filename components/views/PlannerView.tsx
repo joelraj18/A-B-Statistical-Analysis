@@ -63,12 +63,12 @@ function PlannerWorkspace() {
       <PageHeader
         eyebrow="Phase 1 · Pre-experiment planning"
         title="Sample Planner"
-        description="Size the experiment before writing code. Under-powered tests miss real effects — and stopping early turns noise into false wins."
+        description="Size the experiment before writing code, because underpowered tests miss real effects and stopping early turns noise into false wins"
       />
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,380px)_minmax(0,1fr)] lg:items-start">
         <GlassCard className="lg:sticky lg:top-8">
-          <CardHeader title="Parameters" description="Two-sided test on a conversion rate." />
+          <CardHeader title="Parameters" description="Two-sided test on a conversion rate" />
           <div className="space-y-6">
             <Slider
               label="Baseline conversion rate"
@@ -78,7 +78,7 @@ function PlannerWorkspace() {
               value={plan.baselineRate}
               onChange={(baselineRate) => setPlan({ baselineRate })}
               format={(v) => formatPct(v, 1)}
-              hint="Current performance of the control experience."
+              hint="Current performance of the control experience"
             />
             <Slider
               label="Minimum detectable effect"
@@ -88,7 +88,7 @@ function PlannerWorkspace() {
               value={plan.mde}
               onChange={(mde) => setPlan({ mde })}
               format={(v) => formatSignedPct(v, 1)}
-              hint="Smallest relative lift worth detecting."
+              hint="Smallest relative lift worth detecting"
             />
             <div>
               <p className="mb-1.5 text-[12px] font-medium tracking-tight text-muted">Statistical power (1 − β)</p>
@@ -105,7 +105,7 @@ function PlannerWorkspace() {
               suffix="users"
               value={plan.dailyTraffic}
               onChange={(dailyTraffic) => setPlan({ dailyTraffic })}
-              hint="Across both variants — used to estimate duration."
+              hint="Across both variants, used to estimate duration"
             />
           </div>
         </GlassCard>
@@ -168,13 +168,13 @@ function PlannerWorkspace() {
                 <CardHeader
                   icon={<LineChart />}
                   title="Power curve"
-                  description={`Probability of detecting a ${formatSignedPct(plan.mde, 1)} lift as users accrue. Stopping at half the sample leaves you far below ${formatPct(plan.power, 0)}.`}
+                  description={`Probability of detecting a ${formatSignedPct(plan.mde, 1)} lift as users accrue, far below ${formatPct(plan.power, 0)} at half the sample`}
                 />
                 <PowerCurve controlRate={data.controlRate} variantRate={data.variantRate} alpha={plan.alpha} targetPower={plan.power} requiredN={data.perVariant} />
               </GlassCard>
 
               <GlassCard>
-                <CardHeader title="The formula" description="Pooled variance under H₀, unpooled under H₁." />
+                <CardHeader title="The formula" description="Pooled variance under H₀, unpooled under H₁" />
                 <p className="overflow-x-auto rounded-xl bg-fill px-4 py-3 font-mono text-[13px] leading-relaxed text-fg-secondary">
                   n = ( z<sub>α/2</sub>·√(2p̄(1−p̄)) + z<sub>β</sub>·√(p₁(1−p₁) + p₂(1−p₂)) )² / (p₂ − p₁)²
                 </p>
